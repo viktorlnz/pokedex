@@ -91,6 +91,40 @@ const searchPokemons = async (search:string) =>{
     return pokemonList;
 }
 
+const getPokemonEvolveChain = async(url: string, name:string) => {
+    const res = await axios.get(url);
+
+    const filteredChain = getPokePerChain(res.data.chain);
+
+    const chainWithPokemons = getPokemonsInChain(filteredChain, name);
+
+    function getPokePerChain(chain:any, arr:any[] = []){
+        const specie = chain.species;
+
+        const evolveChain:any = {
+            specie
+        };
+
+        if(chain.evolves_to.length > 0){
+            for (const evolution of chain.evolves_to) {
+                arr.push(getPokePerChain(evolution, []));        
+            }
+
+            evolveChain.evolutions = arr;
+        }
+        
+        return evolveChain;
+    }
+
+    function getPokemonsInChain(filteredChain:any, name:string, pokemons: Pokemon[] = []){
+        const specieName = filteredChain.specie.name;
+
+        if(specieName !== name){
+
+        }
+    }
+}
+
 const getPokemon = async (id:number):Promise<Pokemon> =>{
     let res:any = await axios.get(url + 'pokemon/' + id);
 
@@ -99,6 +133,8 @@ const getPokemon = async (id:number):Promise<Pokemon> =>{
     res = await axios.get(pokeData.species.url);
 
     pokeData.specie = res.data;
+
+    console.log(await getPokemonEvolveChain(pokeData.specie.evolution_chain.url, pokeData.name));
     /*
     if(typeof pokeData.specie.evolution_chain !== 'undefined'){
         res = await axios.get(pokeData.specie.evolution_chain.url);
@@ -150,5 +186,7 @@ const getPokemon = async (id:number):Promise<Pokemon> =>{
 
     return pokemon;
 }
+
+
 
 export {searchPokemons, getPokemon}
