@@ -1,5 +1,7 @@
 import axios from "axios";
-import Pokemon from "../models/Pokemon";
+import Pokemon from '../models/Pokemon';
+import Ichain from '../models/IChain';
+import { IPokemonChained } from '../models/IPokemonChain';
 
 const url = 'https://pokeapi.co/api/v2/';
 
@@ -37,66 +39,39 @@ const searchPokemons = async (search:string) =>{
 
     const requisitions = [];
 
-    let ret:any;
-
     for (const poke of listFiltered) {
         requisitions.push(axios.get(poke.url));
     }
 
     const pokemonList = await Promise.all(requisitions)
-    .then( responses => {
-        const pokes = responses.map(res => {
+    .then( async responses => {
+
+        const pokes:Pokemon[] = [];
+        
+        for (const res of responses) {
             const data = res.data;
-            return new Pokemon(data.id, data.name, data.sprites.front_default);
-        });
+
+            const pokemon:Pokemon = await getPokemon(data.id)
+            .then( (res:Pokemon) => res);
+            
+            pokes.push(pokemon);
+        }
+
         return pokes;
     });
 
-    /*
-    const requisitions2 = [];
-
-    for (const poke of pokemonList) {
-        requisitions2.push(axios.get(url + 'evolution-chain/' + poke.id));
-    }
-
-    const pokemonWithEvolveChain = await Promise.all(requisitions2)
-    .then( responses => {
-        pokemonList.forEach( p => {
-            const evolveChain = responses.find(r => r.data.id === p.id);
-            p.evolveChain = evolveChain?.data;
-            console.log(p);
-        });
-        console.log(pokemonList);
-        return pokemonList;
-    });
-
-    const requisitions3 = [];
-
-    for (const poke of pokemonList) {
-        requisitions3.push(axios.get(url + 'pokemon-species/' + poke.id));
-    }
-
-    const pokemonWithPreEvolution = await Promise.all(requisitions3)
-    .then(responses => {
-        pokemonWithEvolveChain.forEach( p => {
-            const evolveFrom = responses.find( res => p.id === res.data.id);
-
-            p.evolveFrom = evolveFrom?.data.evolves_from_species;
-        });
-
-        return pokemonWithEvolveChain;
-    });
-
-    */
+    
     return pokemonList;
 }
 
-const getPokemonEvolveChain = async(url: string, name:string) => {
+const getPokemonEvolveChain = async(url: string, pokemon:Pokemon) => {
     const res = await axios.get(url);
 
     const filteredChain = getPokePerChain(res.data.chain);
 
-    const chainWithPokemons = getPokemonsInChain(filteredChain, name);
+    const chainWithPokemons = await getPokemonsInChain(filteredChain, pokemon);
+
+    return chainWithPokemons;
 
     function getPokePerChain(chain:any, arr:any[] = []){
         const specie = chain.species;
@@ -116,12 +91,32 @@ const getPokemonEvolveChain = async(url: string, name:string) => {
         return evolveChain;
     }
 
-    function getPokemonsInChain(filteredChain:any, name:string, pokemons: Pokemon[] = []){
-        const specieName = filteredChain.specie.name;
 
-        if(specieName !== name){
+    async function getPokemonsInChain(filteredChain:any, samePokemon:Pokemon, pokemons: Ichain|null = null){
+        let pokeChain:Ichain =  {pokemon: {...new Pokemon(1, '', ''), isMain:false}, nextForm: []};
+        
+        if(typeof filteredChain.evolutions !== 'undefined'){
+            for (const evolution of filteredChain.evolutions) {
+                pokeChain.nextForm?.push( await getPokemonsInChain(evolution, samePokemon));
+            }
+        }
+
+        const res = await axios.get(filteredChain.specie.url);
+
+        if (res.data.name === samePokemon.name){
+            pokeChain.pokemon = {...samePokemon, isMain: true};
+        }
+        else{
+            const res2 = await axios.get('https://pokeapi.co/api/v2/pokemon/' + res.data.id);
+
+            const data = res2.data;
+
+            pokeChain.pokemon = {...new Pokemon(data.id, data.name, data.sprites.front_default, ), isMain: false};
 
         }
+
+        
+        return pokeChain;
     }
 }
 
@@ -134,43 +129,6 @@ const getPokemon = async (id:number):Promise<Pokemon> =>{
 
     pokeData.specie = res.data;
 
-    console.log(await getPokemonEvolveChain(pokeData.specie.evolution_chain.url, pokeData.name));
-    /*
-    if(typeof pokeData.specie.evolution_chain !== 'undefined'){
-        res = await axios.get(pokeData.specie.evolution_chain.url);
-
-        pokeData.evolutionChain = res.data;
-
-        const requisitions = [];
-        for (const evolution of pokeData.evolutionChain.chain.evolves_to) {
-            const requisition = axios.get(evolution.species.url);
-            requisitions.push(requisition);
-        }
-
-        const evolutions = await Promise.all(requisitions)
-        .then(responses =>{
-            const evolutions = [];
-
-            for (const res of responses) {
-                evolutions.push(res.data);
-            }
-
-            return evolutions;
-        });
-
-        pokeData.evolutionChain = evolutions;
-        
-    }
-    
-    if(typeof pokeData.specie.evolves_from_species !== 'undefined' && pokeData.specie.evolves_from_species !== null){
-        res = await axios.get(pokeData.specie.evolves_from_species.url);
-
-        pokeData.evolvesFrom = res.data;
-
-    }*/
-    
-    console.log(pokeData);
-
     const pokemon = new Pokemon(pokeData.id, pokeData.species.name, pokeData.sprites.front_default);
 
     pokemon.stats = {
@@ -182,7 +140,11 @@ const getPokemon = async (id:number):Promise<Pokemon> =>{
         speed: pokeData.stats[5].base_stat,
     };
 
-    pokemon.description = pokeData.specie.flavor_text_entries[0].flavor_text;
+    if(typeof pokeData.specie.flavor_text_entries[0] !== 'undefined'){
+        pokemon.description = pokeData.specie.flavor_text_entries[0].flavor_text;
+    }
+    
+    pokemon.evolveChain = await getPokemonEvolveChain(pokeData.specie.evolution_chain.url, Object.assign({},pokemon));
 
     return pokemon;
 }

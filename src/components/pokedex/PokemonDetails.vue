@@ -3,7 +3,10 @@ import { onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import{getPokemon} from '../../utils/apiPokemon';
 import Pokemon from '../../models/Pokemon';
-    const router = useRouter();
+
+import PokemonEvolveChain from './PokemonEvolveChain.vue';
+
+const router = useRouter();
     const route = useRoute();
 
     const id = route.params.id;
@@ -18,27 +21,32 @@ import Pokemon from '../../models/Pokemon';
 </script>
 
 <template>
+    <div>
+        <main class="pokemon">
+            <div class="pokemon-icone">
+                <h2 class="pokemon-icone__title">{{ pokemon?.name }}</h2>
+                <img class="pokemon-icone__image" :src="pokemon?.image" :alt="pokemon?.name" />
+            </div>
+            <div class="pokemon-stats">
+                <h3 class="pokemon-stats__title">Status</h3>
+                <span class="pokemon-stats__hp">HP: {{ pokemon?.stats.hp }}</span>
+                <span class="pokemon-stats__attack">Ataque: {{ pokemon?.stats.attack }}</span>
+                <span class="pokemon-stats__defense">Defesa: {{ pokemon?.stats.defense }}</span>
+                <span class="pokemon-stats__sp-attack">Ataque especial: {{ pokemon?.stats.spAttack }}</span>
+                <span class="pokemon-stats__sp-defense">Defesa especial: {{ pokemon?.stats.spDefense }}</span>
+                <span class="pokemon-stats__speed">Velocidade: {{ pokemon?.stats.speed }}</span>
+            </div>
+            <div class="pokemon-description">
+                <p>{{ pokemon?.description }}</p>
+            </div>
 
-    <main class="pokemon">
-        <div class="pokemon-icone">
-            <h2 class="pokemon-icone__title">{{ pokemon?.name }}</h2>
-            <img class="pokemon-icone__image" :src="pokemon?.image" :alt="pokemon?.name" />
-        </div>
-        <div class="pokemon-stats">
-            <h3 class="pokemon-stats__title">Status</h3>
-            <span class="pokemon-stats__hp">HP: {{ pokemon?.stats.hp }}</span>
-            <span class="pokemon-stats__attack">Ataque: {{ pokemon?.stats.attack }}</span>
-            <span class="pokemon-stats__defense">Defesa: {{ pokemon?.stats.defense }}</span>
-            <span class="pokemon-stats__sp-attack">Ataque especial: {{ pokemon?.stats.spAttack }}</span>
-            <span class="pokemon-stats__sp-defense">Defesa especial: {{ pokemon?.stats.spDefense }}</span>
-            <span class="pokemon-stats__speed">Velocidade: {{ pokemon?.stats.speed }}</span>
-        </div>
-        <div class="pokemon-description">
-            <p>{{ pokemon?.description }}</p>
-        </div>
-    </main>
+            <div class="pokemon__evolve-chain">
+                <PokemonEvolveChain :poke-chain="pokemon?.evolveChain" />
+            </div>
+        </main>
 
-    <button @click="() => router.push('/')" class="btn-voltar">Voltar</button>
+        <button @click="() => router.push('/')" class="btn-voltar">Voltar</button>
+    </div>
 </template>
 
 <style lang="scss" scoped>

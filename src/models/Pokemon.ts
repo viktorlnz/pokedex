@@ -1,3 +1,4 @@
+import Ichain from './IChain';
 interface status {
     hp:number,
     attack: number,
@@ -17,7 +18,6 @@ export default class Pokemon{
         public id: number,
         public name: string,
         public image: string,
-        public evolveChain?: any,
-        public evolveFrom?: any
+        public evolveChain?: Ichain,
     ){}
 }
